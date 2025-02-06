@@ -10,6 +10,7 @@ st.set_page_config(layout="wide")
 # Initialize Letta client
 client = Letta(base_url="http://localhost:8283")
 
+
 def save_agent(action, persona_value, job_directives, level, supervisor_name, agent_name, temperature, 
               model_endpoint_type, model, context_window, agent_id=None):
     """Create or update a Letta agent based on specified action"""
@@ -73,6 +74,9 @@ def save_agent(action, persona_value, job_directives, level, supervisor_name, ag
         }
         
         tags = [f"level_{level}", f"{supervisor_name}_sub"]
+        tools = []
+        if level > 1:
+            tools.append("send_message_to_agents_matching_all_tags")
 
         if action == "create":
             # Validation for create action
@@ -85,7 +89,8 @@ def save_agent(action, persona_value, job_directives, level, supervisor_name, ag
                 memory_blocks=memory_blocks,
                 llm_config=llm_config,
                 embedding_config=embedding_config,
-                tags=tags
+                tags=tags,
+                tools=tools
             )
             
         elif action == "modify" and agent_id:
@@ -94,7 +99,7 @@ def save_agent(action, persona_value, job_directives, level, supervisor_name, ag
                 name=agent_name,
                 llm_config=llm_config,
                 embedding_config=embedding_config,
-                tags=tags
+                tags=tags,
             )
             client.agents.core_memory.modify_block(
                 agent_id=agent_id,
@@ -105,7 +110,13 @@ def save_agent(action, persona_value, job_directives, level, supervisor_name, ag
                 agent_id=agent_id,
                 block_label="persona",
                 value=persona_value
-            )            
+            )
+            #attaching send message to agents matching all tags tool if level > 1
+            if level > 1:
+                client.agents.tools.attach(
+                    agent_id=agent_id,
+                    tool_id="tool-87868ef9-46d1-43a7-aa95-7698a3968317"
+                )            
         else:
             st.error("Invalid action or missing agent ID for modification")
             return None
@@ -185,8 +196,8 @@ with col2:
             
             # Extract model config
             llm_config = agent_config.llm_config
-            current_model = llm_config.model.split('/')[1]
-            current_provider = llm_config.model.split('/')[0]
+            current_model = llm_config.model
+            current_provider = llm_config.model_endpoint_type
             current_context_window = llm_config.context_window
             current_temperature = llm_config.temperature
             current_name = agent_config.name

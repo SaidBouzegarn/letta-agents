@@ -6,8 +6,6 @@ from letta_client import CreateBlock, Letta, MessageCreate
 # Load environment variables
 dotenv.load_dotenv()
 
-# Set page configuration to use maximum width
-st.set_page_config(layout="wide")
 
 # Initialize Letta client
 client = Letta(base_url="http://localhost:8283")
@@ -24,7 +22,7 @@ if "selected_agent_id" not in st.session_state:
     st.session_state.selected_agent_id = None
 
 # Create two columns - adjust width ratio and add gap
-col1, gap, col2 = st.columns([3, 0.2, 7])  # Adjusted for better space utilization
+col1, gap, col2 = st.columns([3, 0.2, 7])
 
 # Left column - Agent selection
 with col1:
@@ -72,40 +70,39 @@ with gap:
 with col2:
     st.header("Chat")
     
-    # Display chat messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+    # Create a container for messages with fixed height
+    messages_container = st.container(height=600)
+    with messages_container:
+        # Display chat messages
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
 
-    # Chat input
-    if prompt := st.chat_input("Type your message here..."):
-        if st.session_state.selected_agent_id:
-            # Add user message to chat history
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            
-            # Display user message
+# Chat input stays fixed at bottom (outside columns)
+if prompt := st.chat_input("Type your message here..."):
+    if st.session_state.selected_agent_id:
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # Display user message
+        with messages_container:
             with st.chat_message("user"):
                 st.write(prompt)
 
-            # Get agent response with streaming
-            try:
-                stream = client.agents.messages.create_stream(
-                    agent_id=st.session_state.selected_agent_id,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                )
-                
-                # Create empty containers for the response
+        # Get agent response with streaming
+        try:
+            stream = client.agents.messages.create_stream(
+                agent_id=st.session_state.selected_agent_id,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            # Create assistant message
+            with messages_container:
                 with st.chat_message("assistant"):
                     message_placeholder = st.empty()
                     reasoning_placeholder = st.empty()
                     final_content = ""
                     
-                    # Process each chunk from the stream
                     for chunk in stream:
                         if hasattr(chunk, 'message_type'):
                             if chunk.message_type == "reasoning_message":
@@ -114,14 +111,11 @@ with col2:
                             elif chunk.message_type == "assistant_message":
                                 final_content += chunk.content
                                 message_placeholder.write(final_content)
-                            # Skip usage_statistics messages entirely
-                        else:
-                            st.warning(f"Unexpected chunk format: {type(chunk)}")
-                
-                # Add final assistant response to chat history
-                st.session_state.messages.append({"role": "assistant", "content": final_content})
-                
-            except Exception as e:
-                st.error(f"Error getting response from agent: {str(e)}")
-        else:
-            st.warning("Please select an agent first")
+            
+            # Add final response to history
+            st.session_state.messages.append({"role": "assistant", "content": final_content})
+            
+        except Exception as e:
+            st.error(f"Error getting response from agent: {str(e)}")
+    else:
+        st.warning("Please select an agent first")

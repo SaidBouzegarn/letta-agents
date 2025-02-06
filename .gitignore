@@ -26,6 +26,8 @@ venv/
 ENV/
 .env
 
+#tests
+tests/
 # IDEs and editors
 .idea/
 .vscode/

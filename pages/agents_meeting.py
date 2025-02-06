@@ -10,7 +10,7 @@ client = Letta(base_url="http://localhost:8283")
 
 def create_and_test_agent():
     try:
-        # Create a new agent
+        # Create a new agent with the built-in multi-agent tool
         print("Creating agent...")
         agent = client.agents.create(
             name="Test Agent",
@@ -41,7 +41,8 @@ def create_and_test_agent():
                 "embedding_endpoint": "https://api.openai.com/v1/",
                 "embedding_dim": 1536
             },
-            tags=["level_1", "test_supervisor_sub"]
+            tags=["level_1", "test_supervisor_sub"],
+            tools=["send_message_to_agents_matching_all_tags"]
         )
         
         print(f"Agent created with ID: {agent.id}")
@@ -53,7 +54,7 @@ def create_and_test_agent():
             messages=[
                 {
                     "role": "user",
-                    "content": "Hello, how are you?"
+                    "content": "Hello, how are you? can you tist all the tools you have acess to?"
                 }
             ],
         )
@@ -71,13 +72,10 @@ def create_and_test_agent():
         #)
         #print(agent_info)
         
-        # Delete the agent
-        print("Deleting agent...")
-        client.agents.delete(agent.id)
-        print("Agent deleted successfully")
+
         
     except Exception as e:
         print(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
-    create_and_test_agent()
+    pass
